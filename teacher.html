@@ -115,6 +115,7 @@
                     <button class="btn" id="btnBonusTask">🎯 Bonus Task</button>
                     <button class="btn" id="btnTogglePowers">🔮 Manage My Shop</button>
                     <button class="btn" id="btnToggleActions">⚡️ Manage Quick Actions</button>
+                    <button class="btn" id="btnChangePassword">🔑 Change Password</button>
                 </div>
             </aside>
             <section class="content panel">
@@ -154,7 +155,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+        // ✅ UPDATED: Added updatePassword for the new feature
+        import { getAuth, signOut, onAuthStateChanged, updatePassword } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
         import { getDatabase, ref, onValue, update, set, remove } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
 
         const $ = sel => document.querySelector(sel);
@@ -193,14 +195,14 @@
 
         if (!schoolId || !teacherId) {
             $('#loader').textContent = 'Access Denied. Redirecting...';
-            setTimeout(() => { window.location.href = './login.html'; }, 1500);
+            setTimeout(() => { window.location.href = './index.html'; }, 1500);
         } else {
             onAuthStateChanged(auth, user => {
                 if (user && user.uid === teacherId) {
                     initializeTeacherPortal(user, schoolId, teacherId);
                 } else {
                     $('#loader').textContent = 'Session expired. Redirecting...';
-                    setTimeout(() => { window.location.href = './login.html'; }, 1500);
+                    setTimeout(() => { window.location.href = './index.html'; }, 1500);
                 }
             });
         }
@@ -358,9 +360,31 @@
             $('#manageModalBody').innerHTML = body;
             $('#manageModal').classList.add('show');
         };
+        
+        // ✅ NEW: Function to show the change password modal
+        const showChangePasswordModal = () => {
+            const modal = $('#manageModal'), title = $('#manageModalTitle'), body = $('#manageModalBody');
+            title.textContent = '🔑 Change Password';
+            body.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <div>
+                        <label>New Password</label>
+                        <input type="password" id="newPasswordInput" style="margin-top:4px;">
+                    </div>
+                    <div>
+                        <label>Confirm New Password</label>
+                        <input type="password" id="confirmPasswordInput" style="margin-top:4px;">
+                    </div>
+                </div>
+                <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                    <button class="btn primary" id="btnSaveChangesPassword">Save New Password</button>
+                </div>
+            `;
+            modal.classList.add('show');
+        };
 
         // --- Event Listeners ---
-        $('#btnLogout').addEventListener('click', () => signOut(auth).then(() => { sessionStorage.clear(); window.location.href = './login.html'; }));
+        $('#btnLogout').addEventListener('click', () => signOut(auth).then(() => { sessionStorage.clear(); window.location.href = './index.html'; }));
         
         $('#classList').addEventListener('click', e => {
             const item = e.target.closest('.class-item');
@@ -419,6 +443,7 @@
         $('#btnToggleActions').addEventListener('click', () => showManageModal('quickActions'));
         $('#btnOpenShop').addEventListener('click', () => showPurchaseModal());
         $('#btnBonusTask').addEventListener('click', () => showBonusTaskModal());
+        $('#btnChangePassword').addEventListener('click', showChangePasswordModal); // ✅ NEW listener
         $('#btnStopBonusTask').addEventListener('click', () => {
             if (confirm('Are you sure you want to stop the current bonus task for this class?')) {
                 remove(ref(db, `schools/${schoolId}/bonusTasks/${activeClassId}`));
@@ -495,6 +520,35 @@
                             const saveBtn = document.querySelector('#btnSaveChanges');
                             if(saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
                         });
+                }
+                
+                // ✅ NEW: Logic for saving the teacher's new password
+                if (target.id === 'btnSaveChangesPassword') {
+                    const newPassword = $('#newPasswordInput').value;
+                    const confirmPassword = $('#confirmPasswordInput').value;
+
+                    if (!newPassword || newPassword.length < 6) {
+                        return showMessage("Password must be at least 6 characters long.", "Error");
+                    }
+                    if (newPassword !== confirmPassword) {
+                        return showMessage("Passwords do not match.", "Error");
+                    }
+
+                    target.disabled = true; target.textContent = "Saving...";
+                    const user = auth.currentUser;
+                    updatePassword(user, newPassword).then(() => {
+                        closeModal();
+                        showMessage("Password updated successfully!", "Success");
+                    }).catch((error) => {
+                        console.error(error);
+                        let message = "An error occurred. ";
+                        if (error.code === 'auth/requires-recent-login') {
+                            message += 'Please log out and log back in to change your password.';
+                        }
+                        showMessage(message, "Error");
+                    }).finally(() => {
+                        target.disabled = false; target.textContent = "Save New Password";
+                    });
                 }
 
                 const purchaseBtn = target.closest('[data-purchase-power-id]');

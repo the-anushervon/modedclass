@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Dashboard • Mod-ed-class</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --bg-dark: #1a1b26; --bg-med: #24283b; --bg-light: #414868; 
+            --panel: #1f202e; --text: #c0caf5; --text-dark: #a9b1d6; 
+            --accent-primary: #bb9af7; --accent-secondary: #7aa2f7; 
+            --accent-green: #9ece6a; --accent-yellow: #e0af68; --accent-red: #f7768e; 
+            --shadow: 0 10px 30px rgba(0,0,0,.4); --radius-lg: 16px; 
+            --radius-md: 12px; --radius-sm: 8px; 
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+        body.light-theme {
+            --bg-dark: #f0f2f5; --bg-med: #ffffff; --bg-light: #e4e6eb;
+            --panel: #ffffff; --text: #050505; --text-dark: #65676b;
+            --accent-primary: #8a3ffc; --accent-secondary: #0f62fe;
+            --accent-green: #24a148; --accent-yellow: #ff832b; --accent-red: #da1e28;
+            --shadow: 0 4px 12px rgba(0,0,0,.1);
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg-dark); color: var(--text); -webkit-font-smoothing: antialiased; font-size: 15px; font-family: 'Poppins', sans-serif; transition: background-color .3s, color .3s; }
+        .hidden { display: none !important; }
+        .app-container { display: flex; flex-direction: column; height: 100vh; max-width: 1600px; margin: auto; padding: 20px; gap: 20px; }
+        .panel { background: var(--panel); border: 1px solid rgba(187, 154, 247, .1); border-radius: var(--radius-lg); box-shadow: var(--shadow); transition: var(--transition); }
+        body.light-theme .panel { border-color: #e0e0e0; }
+        .header { padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+        .title { font-size: 22px; font-weight: 700; color: var(--accent-primary); display: flex; align-items: center; gap: 10px;}
+        .main-app { display: grid; grid-template-columns: 320px 1fr; gap: 20px; flex: 1; min-height: 0; }
+        .sidebar { display: flex; flex-direction: column; gap: 24px; min-height: 0; }
+        .sidebar-section { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 0 10px; }
+        .sidebar-header h3 { margin: 0; font-size: 18px; }
+        .item-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding: 5px; flex: 1; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-med); border-radius: var(--radius-md); border: 1px solid var(--bg-light); transition: var(--transition); cursor: pointer; }
+        .list-item:hover { transform: translateY(-2px); border-color: var(--accent-secondary); }
+        .list-item.active { border-color: var(--accent-primary); background: var(--bg-light); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 30%, transparent); }
+        .classes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; overflow-y: auto; padding: 5px; flex: 1; }
+        .classes-grid .list-item { grid-column: span 1; }
+        .content-area { display: grid; grid-template-columns: 1fr 340px; gap: 20px; min-height: 0; }
+        .main-content, .details-panel { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+        .card { background: var(--panel); border-radius: var(--radius-lg); overflow: hidden; display: flex; flex-direction: column; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid var(--bg-light); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .card-header h3 { margin: 0; font-size: 16px; }
+        .card-body { padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        thead th { text-align: left; padding: 12px 16px; background: var(--panel); position: sticky; top: 0; z-index: 1; border-bottom: 1px solid var(--bg-light); }
+        tbody tr { cursor: pointer; transition: var(--transition); }
+        tbody tr:hover { background-color: var(--bg-med); }
+        tbody tr.active { background-color: var(--bg-light); }
+        tbody td { padding: 12px 16px; border-bottom: 1px solid var(--bg-med); }
+        .btn { border: none; background: var(--bg-light); color: var(--text); padding: 10px 16px; border-radius: var(--radius-md); cursor: pointer; font-weight: 500; transition: var(--transition); display: inline-flex; align-items: center; gap: 8px; justify-content: center; }
+        .btn:hover:not(:disabled) { filter: brightness(1.2); }
+        .btn.primary { background: var(--accent-primary); color: #f0f0f0; font-weight: 600; } body.light-theme .btn.primary { color: #fff; }
+        .btn.danger { background: var(--accent-red); color: #f0f0f0; } body.light-theme .btn.danger { color: #fff; }
+        .btn.small { padding: 6px 10px; font-size: 13px; }
+        input, textarea, select { background: var(--bg-med); color: var(--text); border: 1px solid var(--bg-light); border-radius: var(--radius-md); padding: 10px 14px; width: 100%; font-family: inherit; font-size: 14px; }
+        .password-group { display: flex; gap: 8px; align-items: center; }
+        textarea { min-height: 100px; resize: vertical; }
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(26, 27, 38, .8); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 50; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+        body.light-theme .modal-backdrop { background: rgba(0, 0, 0, .5); }
+        .modal-backdrop.show { opacity: 1; pointer-events: auto; }
+        .modal { width: min(500px, 96vw); background: var(--panel); border-radius: var(--radius-lg); }
+        .modal header { padding: 16px 24px; border-bottom: 1px solid var(--bg-light); font-size: 18px; font-weight: 700; }
+        .modal .body { padding: 24px; display: grid; gap: 16px; }
+        .form-group { display: grid; gap: 8px; } 
+        label { font-weight: 500; font-size: 14px; }
+        .muted { color: var(--text-dark); font-size: 14px; text-align: center; }
+        .placeholder { display: grid; place-items: center; height: 100%; text-align: center; padding: 20px;}
+        .placeholder-icon { font-size: 48px; color: var(--bg-light); margin-bottom: 16px; }
+        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+        .power-card { background: var(--bg-med); border: 1px solid var(--bg-light); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; text-align: center; }
+        .power-card .power-emoji { font-size: 28px; margin-bottom: 10px; }
+        .power-card-name { font-weight: 600; flex-grow: 1; margin-bottom: 10px; font-size: 14px; }
+        .chip { display: inline-flex; gap: 8px; align-items: center; padding: 6px 12px; background: var(--bg-light); border-radius: var(--radius-md); font-size: 13px; font-weight: 500; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--bg-light); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-secondary); }
+        
+        .menu-toggle-btn { display: none; }
+        .sidebar-overlay {
+            position: fixed; inset: 0;
+            background: rgba(26, 27, 38, .8);
+            backdrop-filter: blur(5px); z-index: 49;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        body.light-theme .sidebar-overlay { background: rgba(0, 0, 0, .5); }
+        body.sidebar-open .sidebar-overlay { opacity: 1; pointer-events: auto; }
+
+        @media (max-width: 1200px) {
+            .content-area { grid-template-columns: 1fr; }
+            .details-panel { display: none; }
+            body.details-view-active .main-content { display: none; }
+            body.details-view-active .details-panel { display: flex; }
+        }
+        @media (max-width: 768px) {
+            .menu-toggle-btn { display: inline-flex; }
+            .app-container { padding: 10px; gap: 10px;}
+            .main-app { grid-template-columns: 1fr; }
+            .sidebar {
+                position: fixed; left: 0; top: 0; height: 100vh;
+                width: min(320px, 85vw); z-index: 50;
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+                padding: 20px;
+                display: grid; grid-template-columns: 1fr;
+            }
+            body.sidebar-open .sidebar { transform: translateX(0); }
+            .header { padding: 12px; } .title { font-size: 18px; }
+            #adminEmail { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loader" class="placeholder"><div class="placeholder-icon">...</div><div>Authenticating...</div></div>
+    <div id="app" class="hidden app-container">
+        <div class="sidebar-overlay"></div>
+        <div class="header panel">
+            <div class="title">
+                <button id="menuToggleBtn" class="btn small menu-toggle-btn" style="margin-right: 8px;">☰</button>
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 256 256"><path d="M128,24a64,64,0,0,0-64,64V93.33a8,8,0,0,1-16,0V88a80,80,0,0,1,160,0v5.33a8,8,0,0,1-16,0V88A64,64,0,0,0,128,24Zm88,104v2.67a8,8,0,0,1-16,0V128a80.1,80.1,0,0,1-48,72.67V208a24,24,0,0,1-48,0v-7.33A80.1,80.1,0,0,1,56,128v-2.67a8,8,0,0,1,16,0V128a64,64,0,0,0,112,0v-5.33a8,8,0,0,1,16,0Z"></path></svg>
+                Admin Dashboard
+            </div>
+            <div style="display: flex; align-items: center;">
+                <button id="themeToggleBtn" class="btn small" style="margin-right: 16px;">🌙</button>
+                <span id="adminEmail" class="muted" style="margin-right: 16px;"></span>
+                <button class="btn danger" id="btnLogout">Logout</button>
+            </div>
+        </div>
+        <div class="main-app">
+            <aside class="sidebar panel">
+                <div class="sidebar-section"><div class="sidebar-header"><h3>Teachers</h3><button class="btn small primary" id="btnAddTeacher">Add</button></div><div id="teachersList" class="item-list"></div></div>
+                <div class="sidebar-section"><div class="sidebar-header"><h3>Classes</h3><button class="btn small primary" id="btnAddClass">Add</button></div><div id="classesList" class="classes-grid"></div></div>
+            </aside>
+            <main class="content-area">
+                <div id="mainContent" class="main-content panel"></div>
+                <div id="detailsPanel" class="details-panel card"></div>
+            </main>
+        </div>
+    </div>
+    <div class="modal-backdrop" id="genericModal"><div class="modal"><header id="modalTitle"></header><div class="body" id="modalBody"></div></div></div>
+    <div class="modal-backdrop" id="messageModal"><div class="modal"><header id="messageTitle">Notification</header><div class="body" style="text-align:center;"><p id="messageText"></p><button class="btn primary" data-action="close-modal">OK</button></div></div></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+    import { getDatabase, ref, onValue, set, push, remove, update } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
+
+    const $ = sel => document.querySelector(sel);
+    const firebaseConfig = { apiKey: "AIzaSyB5P-Ht1hi-KyvPKCbo9Ueu4d903hEOPOM", authDomain: "mod-ed-class.firebaseapp.com", databaseURL: "https://mod-ed-class-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "mod-ed-class", storageBucket: "mod-ed-class.appspot.com", messagingSenderId: "876182788592", appId: "1:876182788592:web:7b5cfe54b19aebe7486535" };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    
+    let schoolId, schoolData = {}, activeView = { type: null, id: null };
+    
+    const showMessage = (text, title = "Notification") => { $('#messageText').textContent = text; $('#messageTitle').textContent = title; $('#messageModal').classList.add('show'); };
+    const showModal = (title, body) => { $('#modalTitle').textContent = title; $('#modalBody').innerHTML = body; $('#genericModal').classList.add('show'); };
+    const closeModal = () => document.querySelectorAll('.modal-backdrop.show').forEach(m => m.classList.remove('show'));
+
+    // --- SIDEBAR & DETAILS VIEW TOGGLE ---
+    const menuToggleBtn = $('#menuToggleBtn');
+    const sidebarOverlay = $('.sidebar-overlay');
+    menuToggleBtn.addEventListener('click', () => document.body.classList.add('sidebar-open'));
+    sidebarOverlay.addEventListener('click', () => document.body.classList.remove('sidebar-open'));
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 1200) { document.body.classList.remove('details-view-active'); }
+    });
+    // --- END TOGGLES ---
+
+    // --- THEME TOGGLE ---
+    const themeToggleBtn = $('#themeToggleBtn');
+    const applyTheme = (theme) => {
+        if (theme === 'light') {
+            document.body.classList.add('light-theme');
+            themeToggleBtn.textContent = '☀️';
+        } else {
+            document.body.classList.remove('light-theme');
+            themeToggleBtn.textContent = '🌙';
+        }
+    };
+    const currentTheme = localStorage.getItem('theme') || 'dark';
+    applyTheme(currentTheme);
+    themeToggleBtn.addEventListener('click', () => {
+        const newTheme = document.body.classList.contains('light-theme') ? 'dark' : 'light';
+        localStorage.setItem('theme', newTheme);
+        applyTheme(newTheme);
+    });
+    // --- END THEME TOGGLE ---
+
+    onAuthStateChanged(auth, user => user ? initializeAppForAdmin(user) : window.location.href = './index.html');
+    
+    function initializeAppForAdmin(user) {
+        schoolId = 'pis'; // Assuming a single school context
+        $('#loader').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#adminEmail').textContent = user.email;
+        onValue(ref(db, `schools/${schoolId}`), (snapshot) => { schoolData = snapshot.val() || { teachers: {}, classes: {}, students: {} }; renderAll(); });
+    }
+
+    function renderAll() { renderTeachersList(); renderClassesList(); renderMainContent(); renderDetailsPanel(); }
+    
+    function renderTeachersList() {
+        const teachers = Object.entries(schoolData.teachers || {}).filter(([_, t]) => t.role !== 'admin');
+        $('#teachersList').innerHTML = teachers.length === 0 ? `<p class="muted">No teachers added.</p>` :
+            teachers.map(([id, t]) => `<div class="list-item ${activeView.type === 'teacher' && activeView.id === id ? 'active' : ''}" data-id="${id}" data-type="teacher"><span>${t.name}</span></div>`).join('');
+    }
+    
+    function renderClassesList() {
+        const classes = schoolData.classes || {};
+        const activeClassId = activeView.type === 'class' ? activeView.id : (activeView.type === 'student' ? activeView.classId : null);
+        
+        const sortedClasses = Object.entries(classes).sort(([, a], [, b]) => a.name.localeCompare(b.name));
+
+        $('#classesList').innerHTML = sortedClasses.length === 0 ? `<p class="muted" style="grid-column: 1 / -1;">No classes.</p>` :
+            sortedClasses.map(([id, cls]) => `<div class="list-item ${id === activeClassId ? 'active' : ''}" data-id="${id}" data-type="class"><span>${cls.name}</span></div>`).join('');
+    }
+
+    function renderMainContent() {
+        const container = $('#mainContent'); const { type, id } = activeView;
+        const classIdToShow = type === 'class' ? id : (type === 'student' ? activeView.classId : null);
+        if (type === 'teacher') renderTeacherAssignments(container, id);
+        else if (classIdToShow) renderClassStudents(container, classIdToShow);
+        else container.innerHTML = `<div class="placeholder"><div class="placeholder-icon">👋</div><h3>Welcome, Admin!</h3><p class="muted">Select a teacher or a class from the sidebar to begin.</p></div>`;
+    }
+
+    function renderTeacherAssignments(container, teacherId) {
+        const teacher = schoolData.teachers?.[teacherId];
+        if (!teacher) { container.innerHTML = `<div class="placeholder"><p class="muted">Select a teacher.</p></div>`; return; }
+        
+        const editTeacherBtn = (window.innerWidth <= 1200)
+            ? `<button class="btn small" data-action="edit-item" data-type="teacher" data-id="${teacherId}">Edit Details</button>`
+            : '';
+
+        const classCheckboxes = Object.entries(schoolData.classes || {}).map(([classId, cls]) => `
+            <label style="display: block; padding: 10px; background: var(--bg-med); border-radius: 8px; cursor: pointer;">
+                <input type="checkbox" data-class-id="${classId}" ${teacher.assignedClasses?.[classId] ? 'checked' : ''}> ${cls.name}
+            </label>`).join('');
+        container.innerHTML = `
+            <div class="card-header">
+                <h3>Assign Classes for ${teacher.name}</h3>
+                ${editTeacherBtn}
+            </div>
+            <div class="card-body">
+                <div style="display:flex; flex-direction:column; gap:8px;">${classCheckboxes || '<p class="muted">No classes to assign.</p>'}</div>
+                <button class="btn primary" id="btnSaveTeacherAssignments" data-teacher-id="${teacherId}" style="margin-top: auto;">Save Assignments</button>
+            </div>`;
+    }
+
+    function renderClassStudents(container, classId) {
+        const cls = schoolData.classes?.[classId];
+        if (!cls) { container.innerHTML = `<div class="placeholder"><p class="muted">Class not found.</p></div>`; return; }
+        const studentsInClass = Object.entries(schoolData.students || {}).filter(([_, stu]) => stu.classId === classId);
+
+        const editClassBtn = (window.innerWidth <= 1200)
+            ? `<button class="btn small" data-action="edit-item" data-type="class" data-id="${classId}">Edit Class</button>`
+            : '';
+
+        container.innerHTML = `
+            <div class="card-header">
+                <div style="display:flex; align-items:center; gap:16px;">
+                    <h3>${cls.name}</h3>
+                    ${editClassBtn}
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap: wrap;">
+                    <button class="btn small" data-action="add-student" data-class-id="${classId}">Add Student</button>
+                    <button class="btn small" data-action="assign-teachers" data-class-id="${classId}">Assign Teachers</button>
+                    <button class="btn small" data-action="download-logins" data-class-id="${classId}">Download Logins</button>
+                </div>
+            </div>
+            <div class="card-body" style="padding: 0; overflow-y: auto;">
+                ${studentsInClass.length > 0 ? `
+                <table><thead><tr><th>Student Name</th><th>Login ID</th><th>Password</th></tr></thead><tbody>
+                ${studentsInClass.map(([stuId, stu]) => `<tr data-id="${stuId}" data-type="student" data-class-id="${classId}" class="${activeView.type === 'student' && activeView.id === stuId ? 'active' : ''}"><td>${stu.name}</td><td><code>${stu.loginId}</code></td><td><code>********</code></td></tr>`).join('')}
+                </tbody></table>` : `
+                <div class="placeholder"><div class="placeholder-icon">텅</div><h4>This class is empty</h4><p class="muted">Add students individually or import multiple at once.</p><button class="btn primary" data-action="import-students" data-class-id="${classId}">Import Students</button></div>`}
+            </div>`;
+    }
+
+    function renderDetailsPanel() {
+        const container = $('#detailsPanel'); const { type, id } = activeView;
+        if (!type || !id) { container.innerHTML = `<div class="placeholder"><p class="muted">Select an item to see details</p></div>`; return; }
+        
+        let headerTitle = '', body = '';
+        const backButton = `<button class="btn small" data-action="back-to-list">← Back</button>`;
+        
+        if (type === 'teacher' && schoolData.teachers?.[id]) {
+            const teacher = schoolData.teachers[id]; headerTitle = `<h3>Edit Teacher</h3>`;
+            body = `<div class="form-group"><label>Full Name</label><input type="text" data-field="name" value="${teacher.name}"></div>
+                    <div class="form-group"><label>Subject</label><input type="text" data-field="subject" value="${teacher.subject || ''}" placeholder="e.g., Mathematics"></div>
+                    <div class="form-group"><label>Email</label><input type="email" value="${teacher.email}" readonly><small class="muted" style="text-align:left;">Email cannot be changed.</small></div>
+                    <div style="margin-top:auto; display:flex; gap:10px; justify-content:flex-end; flex-wrap: wrap;">
+                        <button class="btn" data-action="view-shop">🛒 View Shop</button>
+                        <button class="btn danger" data-action="delete-item">Delete</button>
+                        <button class="btn primary" data-action="save-item">Save</button>
+                    </div>`;
+        } else if (type === 'class' && schoolData.classes?.[id]) {
+            const cls = schoolData.classes[id]; headerTitle = `<h3>Edit Class</h3>`;
+            body = `<div class="form-group"><label>Class Name</label><input type="text" data-field="name" value="${cls.name}"></div>
+                    <div style="margin-top:auto; display:flex; gap:10px; justify-content:flex-end;"><button class="btn danger" data-action="delete-item">Delete</button><button class="btn primary" data-action="save-item">Save</button></div>`;
+        } else if (type === 'student' && schoolData.students?.[id]) {
+            const student = schoolData.students[id]; headerTitle = `<h3>Edit Student</h3>`;
+            const classOptions = Object.entries(schoolData.classes || {}).map(([classId, cls]) => `<option value="${classId}" ${student.classId === classId ? 'selected' : ''}>${cls.name}</option>`).join('');
+            body = `<div class="form-group"><label>Full Name</label><input type="text" data-field="name" value="${student.name}"></div>
+                    <div class="form-group"><label>Login ID</label><input type="text" data-field="loginId" value="${student.loginId}"></div>
+                    <div class="form-group"><label>Password</label>
+                        <div class="password-group">
+                            <input type="password" data-field="password" value="${student.password}" id="studentPasswordDetailInput">
+                            <button class="btn small" data-action="toggle-password-visibility">👁️</button>
+                        </div>
+                        <button class="btn small" data-action="generate-password" style="margin-top:4px; width: fit-content;">Generate New</button>
+                    </div>
+                    <div class="form-group"><label>Ed-Coins</label><input type="number" data-field="edcoins" value="${student.edcoins || 0}"></div>
+                    <div class="form-group"><label>Class</label><select data-field="classId">${classOptions}</select></div>
+                    <div class="form-group" style="margin-top:auto; display:flex; gap:10px; justify-content:flex-end;"><button class="btn danger" data-action="delete-item">Delete</button><button class="btn primary" data-action="save-item">Save</button></div>`;
+        } else { container.innerHTML = `<div class="placeholder"><p class="muted">Select an item to see details</p></div>`; return; }
+        
+        const headerContent = (window.innerWidth <= 1200)
+            ? `<div style="display:flex; align-items:center; gap: 16px; width: 100%;">${backButton}${headerTitle}</div>`
+            : headerTitle;
+            
+        container.innerHTML = `<div class="card-header">${headerContent}</div><div class="card-body">${body}</div>`;
+    }
+    
+    // --- Data Modification Functions ---
+    async function handleDetailsAction(e) {
+        const { type, id } = activeView; if (!type || !id) return;
+        const target = e.target.closest('[data-action]'); if (!target) return;
+        const action = target.dataset.action;
+
+        if (action === 'view-shop') {
+            showTeacherShopModal(id);
+        } else if (action === 'toggle-password-visibility') {
+            const passInput = $('#studentPasswordDetailInput');
+            passInput.type = passInput.type === 'password' ? 'text' : 'password';
+        } else if (action === 'generate-password') {
+            if (confirm("Are you sure you want to generate a new password? This will replace the current one in the input field.")) {
+                $('#studentPasswordDetailInput').value = randomString();
+            }
+        } else if (action === 'delete-item') {
+            let confirmationText = `Delete this ${type}?`;
+            let dependentInfo = '';
+            
+            if (type === 'class') {
+                const studentCount = Object.values(schoolData.students || {}).filter(s => s.classId === id).length;
+                if (studentCount > 0) {
+                    dependentInfo = ` This will also permanently delete all ${studentCount} student(s) in this class. This action cannot be undone.`;
+                }
+            } else if (type === 'teacher') {
+                dependentInfo = ` This only removes the teacher's profile from the database, not their login account.`;
+            }
+
+            if (!confirm(confirmationText + dependentInfo)) return;
+
+            const updates = {};
+            if (type === 'class') {
+                updates[`/classes/${id}`] = null;
+                Object.keys(schoolData.students || {}).forEach(studentId => {
+                    if (schoolData.students[studentId].classId === id) {
+                        updates[`/students/${studentId}`] = null;
+                    }
+                });
+                Object.keys(schoolData.teachers || {}).forEach(teacherId => {
+                    if (schoolData.teachers[teacherId]?.assignedClasses?.[id]) {
+                        updates[`/teachers/${teacherId}/assignedClasses/${id}`] = null;
+                    }
+                });
+                
+            } else {
+                updates[`/${type}s/${id}`] = null;
+            }
+            
+            update(ref(db, `schools/${schoolId}`), updates)
+                .then(() => { 
+                    const successMessage = type === 'class' ? 'Class and all associated students have been deleted.' : `${type} deleted.`;
+                    showMessage(successMessage); 
+                    activeView = {type:null, id:null}; 
+                })
+                .catch(err => {
+                    console.error("Firebase update failed:", err);
+                    showMessage(`Error: ${err.message}`);
+                });
+
+        } else if (action === 'save-item') {
+            if (type === 'student') {
+                const oldPassword = schoolData.students[id].password;
+                const newPassword = $('#studentPasswordDetailInput').value;
+                if (oldPassword !== newPassword) {
+                    if (!confirm("You are about to change this student's password. Are you sure?")) {
+                        return;
+                    }
+                }
+            }
+
+            const fields = {};
+            document.querySelectorAll(`#detailsPanel [data-field]`).forEach(input => {
+                fields[input.dataset.field] = input.type === 'number' ? Number(input.value) : input.value;
+            });
+            update(ref(db, `schools/${schoolId}/${type}s/${id}`), fields)
+                .then(() => showMessage(`${type} updated.`))
+                .catch(err => showMessage(`Error: ${err.message}`));
+        }
+    }
+
+    const randomString = () => Math.random().toString(36).substring(2, 8);
+    
+    // Generates a PascalCase login ID from a full name
+    const generateLoginId = (name) => {
+        if (!name) return '';
+        return name
+            .trim()
+            .split(/\s+/)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join('');
+    };
+
+    function downloadStudentLogins(classId) {
+        const cls = schoolData.classes?.[classId];
+        if (!cls) return;
+        const studentsInClass = Object.values(schoolData.students || {}).filter(stu => stu.classId === classId);
+        if (studentsInClass.length === 0) {
+            showMessage('This class has no students to export.');
+            return;
+        }
+
+        const studentCards = studentsInClass.map(stu => {
+            const name = stu.name.replace(/"/g, '""');
+            return [
+                `"Welcome to Mod-Ed-Class!"`,
+                `"Student Name:","${name}"`,
+                `"Login ID:","${stu.loginId}"`,
+                `"Password:","${stu.password}"`,
+                `"-----------------------","-----------------------"`
+            ];
+        });
+
+        let csvContent = "data:text/csv;charset=utf-8,";
+        const rowCount = Math.ceil(studentCards.length / 2);
+
+        for (let i = 0; i < rowCount; i++) {
+            const card1 = studentCards[i * 2];
+            const card2 = studentCards[i * 2 + 1];
+
+            for (let j = 0; j < card1.length; j++) {
+                csvContent += card1[j];
+                csvContent += ',"",'; // Spacer column
+                if (card2) {
+                    csvContent += card2[j];
+                }
+                csvContent += '\n';
+            }
+            csvContent += '\n'; 
+        }
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `${cls.name}_login_cards_2_columns.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    const showAddTeacherModal = () => {
+        const body = `
+            <div class="form-group"><label>Full Name</label><input type="text" id="teacherNameInput" required></div>
+            <div class="form-group"><label>Email</label><input type="email" id="teacherEmailInput" required></div>
+            <div class="form-group"><label>Password</label><input type="text" id="teacherPasswordInput" required></div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                <button class="btn" data-action="close-modal">Cancel</button>
+                <button class="btn primary" id="btnSaveTeacher">Create Teacher</button>
+            </div>`;
+        showModal('Add New Teacher', body);
+        $('#teacherPasswordInput').value = randomString();
+    };
+
+    const showAddClassModal = () => {
+        const body = `
+            <div class="form-group"><label>Class Name</label><input type="text" id="classNameInput" placeholder="e.g., Grade 5 Math" required></div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                <button class="btn" data-action="close-modal">Cancel</button><button class="btn primary" id="btnSaveClass">Create Class</button>
+            </div>`;
+        showModal('Add New Class', body);
+    };
+
+    const showAssignTeachersModal = (classId) => {
+        const cls = schoolData.classes[classId];
+        const assignedTeachers = Object.keys(cls.assignedTeachers || {});
+        const teacherCheckboxes = Object.entries(schoolData.teachers || {}).filter(([_,t]) => t.role === 'teacher').map(([id, teacher]) => `
+            <label style="display: block; padding: 10px; background: var(--bg-med); border-radius: 8px; cursor: pointer;">
+                <input type="checkbox" data-teacher-id="${id}" ${assignedTeachers.includes(id) ? 'checked' : ''}> ${teacher.name}
+            </label>`).join('');
+        const body = `<div style="display:flex; flex-direction:column; gap:8px;">${teacherCheckboxes || '<p class="muted">No teachers found.</p>'}</div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                <button class="btn" data-action="close-modal">Cancel</button><button class="btn primary" id="btnSaveClassAssignments" data-class-id="${classId}">Save</button>
+            </div>`;
+        showModal(`Assign Teachers to ${cls.name}`, body);
+    };
+
+    const showImportStudentsModal = (classId) => {
+        const body = `
+            <div class="form-group">
+                <label>Student Names</label>
+                <textarea id="studentNamesImport" placeholder="One full name per line..."></textarea>
+                <small class="muted" style="text-align:left;">Login IDs and passwords will be generated automatically.</small>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                <button class="btn" data-action="close-modal">Cancel</button>
+                <button class="btn primary" id="btnRunImport" data-class-id="${classId}">Import Students</button>
+            </div>`;
+        showModal(`Import Students into ${schoolData.classes[classId].name}`, body);
+    };
+    
+    const showTeacherShopModal = (teacherId) => {
+        const teacher = schoolData.teachers?.[teacherId];
+        if (!teacher) return;
+        const powers = teacher.settings?.powers || [];
+        let gridContent;
+        if (powers.length === 0) {
+            gridContent = `<p class="muted" style="grid-column: 1 / -1;">This teacher has not added any items to their shop.</p>`;
+        } else {
+            gridContent = powers.map(p => `
+                <div class="power-card">
+                    <div class="power-emoji">${p.emoji || '✨'}</div>
+                    <div class="power-card-name">${p.name}</div>
+                    <div class="chip" style="margin: 0 auto;">${p.cost} EDcoins</div>
+                </div>
+            `).join('');
+        }
+        const body = `<div class="shop-grid">${gridContent}</div>
+                      <button class="btn" data-action="close-modal" style="margin-top: 16px;">Close</button>`;
+        showModal(`Viewing ${teacher.name}'s Shop`, body);
+    };
+
+    const showAddStudentModal = (classId) => {
+        const body = `
+            <div class="form-group"><label for="studentNameInput">Full Name</label><input type="text" id="studentNameInput" placeholder="e.g., Jane Doe" required></div>
+            <div class="form-group"><label for="studentLoginIdInput">Login ID</label><input type="text" id="studentLoginIdInput" placeholder="e.g., JaneDoe"><small class="muted" style="text-align: left;">If blank, one will be generated.</small></div>
+            <div class="form-group"><label for="studentPasswordInput">Password</label><input type="text" id="studentPasswordInput"><small class="muted" style="text-align: left;">If blank, one will be generated.</small></div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                <button class="btn" data-action="close-modal">Cancel</button><button class="btn primary" id="btnSaveStudent" data-class-id="${classId}">Add Student</button>
+            </div>`;
+        showModal('Add New Student', body);
+        $('#studentPasswordInput').value = randomString();
+    };
+
+    // --- Global Click Listener ---
+    document.addEventListener('click', e => {
+        const target = e.target;
+        const item = target.closest('[data-id][data-type]');
+        if (item) { 
+            activeView = { type: item.dataset.type, id: item.dataset.id, classId: item.dataset.classId };
+            if (window.innerWidth <= 768) { document.body.classList.remove('sidebar-open'); }
+            
+            if (item.dataset.type === 'student' && window.innerWidth <= 1200) {
+                document.body.classList.add('details-view-active');
+            } else {
+                document.body.classList.remove('details-view-active');
+            }
+            renderAll(); 
+            return; 
+        }
+        
+        if (target.closest('#detailsPanel')) { handleDetailsAction(e); }
+        
+        const actionTarget = target.closest('[data-action]');
+        if (actionTarget) {
+            const { action, classId, type, id } = actionTarget.dataset;
+            if (action === 'close-modal') closeModal();
+            if (action === 'add-student') showAddStudentModal(classId);
+            if (action === 'import-students') showImportStudentsModal(classId);
+            if (action === 'assign-teachers') showAssignTeachersModal(classId);
+            if (action === 'download-logins') downloadStudentLogins(classId);
+            if (action === 'back-to-list') {
+                document.body.classList.remove('details-view-active');
+                if (activeView.type === 'student') {
+                    activeView = { type: 'class', id: activeView.classId };
+                }
+                renderAll();
+            }
+            if (action === 'edit-item') {
+                activeView = { type, id };
+                document.body.classList.add('details-view-active');
+                renderAll();
+            }
+        }
+
+        if (target.id === 'btnLogout') { signOut(auth); }
+        if (target.id === 'btnAddTeacher') { showAddTeacherModal(); }
+        if (target.id === 'btnAddClass') { showAddClassModal(); }
+        
+        // Modal Save Handlers
+        if (target.id === 'btnSaveTeacher') {
+            const name = $('#teacherNameInput').value.trim();
+            const email = $('#teacherEmailInput').value.trim();
+            const password = $('#teacherPasswordInput').value.trim();
+            if (!name || !email || !password) return showMessage("All fields are required.", "Error");
+            const tempApp = initializeApp(firebaseConfig, 'secondary');
+            const tempAuth = getAuth(tempApp);
+            createUserWithEmailAndPassword(tempAuth, email, password)
+                .then(userCredential => {
+                    const newTeacher = { 
+                        name, email, role: 'teacher',
+                        settings: {
+                            powers: [ { id: 'power-default-hwpass', name: 'Homework Pass', emoji: '🎟️', cost: 100 } ],
+                            quickActions: [ { label: 'Great Answer', delta: 5 }, { label: 'Off-task', delta: -5 } ]
+                        }
+                    };
+                    return set(ref(db, `schools/${schoolId}/teachers/${userCredential.user.uid}`), newTeacher);
+                })
+                .then(() => { closeModal(); showMessage("Teacher created successfully."); })
+                .catch(err => showMessage(`Error: ${err.message}`));
+        }
+        if (target.id === 'btnSaveClass') {
+            const name = $('#classNameInput').value.trim();
+            if (!name) return;
+            push(ref(db, `schools/${schoolId}/classes`), { name }).then(() => closeModal());
+        }
+        if (target.id === 'btnSaveStudent') {
+            const classId = target.dataset.classId;
+            const name = $('#studentNameInput').value.trim();
+            if (!name) return showMessage("Student name is required.", "Error");
+            
+            const loginId = $('#studentLoginIdInput').value.trim() || generateLoginId(name);
+            const password = $('#studentPasswordInput').value.trim() || randomString();
+            
+            const isDuplicate = Object.values(schoolData.students || {}).some(s => s.loginId === loginId);
+            if (isDuplicate) {
+                return showMessage(`Error: Login ID "${loginId}" already exists. Please enter a unique one.`, "Duplicate Login ID");
+            }
+
+            push(ref(db, `schools/${schoolId}/students`), { name, classId, loginId, password, edcoins: 0 }).then(() => closeModal());
+        }
+        if (target.id === 'btnRunImport') {
+            const names = $('#studentNamesImport').value.trim().split('\n').filter(Boolean);
+            if (names.length === 0) return;
+            const updates = {};
+            const existingLoginIds = new Set(Object.values(schoolData.students || {}).map(s => s.loginId));
+            let duplicatesFound = false;
+
+            names.forEach(name => {
+                const cleanName = name.trim();
+                const loginId = generateLoginId(cleanName);
+
+                if (existingLoginIds.has(loginId)) {
+                    duplicatesFound = true;
+                    return; 
+                }
+                existingLoginIds.add(loginId);
+
+                const newId = push(ref(db, `schools/${schoolId}/students`)).key;
+                updates[`students/${newId}`] = { name: cleanName, classId: target.dataset.classId, loginId: loginId, password: randomString(), edcoins: 0 };
+            });
+
+            if (Object.keys(updates).length > 0) {
+                update(ref(db, `schools/${schoolId}`), updates).then(() => {
+                    closeModal();
+                    let message = `${Object.keys(updates).length} student(s) imported.`;
+                    if (duplicatesFound) {
+                        message += " Some students were skipped due to duplicate names/login IDs.";
+                    }
+                    showMessage(message);
+                });
+            } else if (duplicatesFound) {
+                showMessage("Import failed. All provided names resulted in duplicate Login IDs that already exist.", "Error");
+            }
+        }
+        if (target.id === 'btnSaveTeacherAssignments') {
+            const teacherId = target.dataset.teacherId;
+            const updates = {};
+            document.querySelectorAll('#mainContent input[type="checkbox"]').forEach(box => {
+                updates[`teachers/${teacherId}/assignedClasses/${box.dataset.classId}`] = box.checked ? true : null;
+            });
+            update(ref(db, `schools/${schoolId}`), updates)
+                .then(() => showMessage("Teacher assignments saved."))
+                .catch(err => showMessage(`Error: ${err.message}`));
+        }
+        if (target.id === 'btnSaveClassAssignments') {
+            const classId = target.dataset.classId;
+            const updates = {};
+            document.querySelectorAll('#genericModal input[type="checkbox"]').forEach(box => {
+                const teacherId = box.dataset.teacherId;
+                updates[`classes/${classId}/assignedTeachers/${teacherId}`] = box.checked ? true : null;
+                updates[`teachers/${teacherId}/assignedClasses/${classId}`] = box.checked ? true : null;
+            });
+            update(ref(db, `schools/${schoolId}`), updates).then(() => closeModal());
+        }
+    });
+</script>
+</body>
+</html>

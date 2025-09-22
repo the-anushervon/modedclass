@@ -104,7 +104,7 @@
     .bonus-task-card.completed { background: var(--bg-med); color: var(--text-dark); }
     .bonus-task-card h4 { margin: 0; font-size: 20px; }
     .bonus-task-card p { margin: 0; opacity: .9; }
-    .quiz-modal {
+    .quiz-modal, .password-modal {
         position: fixed; inset: 0; background: var(--bg-dark); z-index: 100;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
         padding: 20px; text-align: center;
@@ -121,13 +121,26 @@
     .quiz-answer.wrong { background-color: color-mix(in srgb, var(--accent-red) 50%, transparent); color: #fff; border-color: var(--accent-red); }
     body.light-theme .quiz-answer.correct { background-color: var(--accent-green); }
     body.light-theme .quiz-answer.wrong { background-color: var(--accent-red); }
-
     .quiz-progress { margin-top: 30px; font-size: 14px; color: var(--text-dark); }
     .quiz-results { font-size: 24px; line-height: 1.5; }
     .quiz-results span { color: var(--accent-yellow); font-size: 48px; font-weight: 700; display: block; margin: 10px 0; }
     .muted { color: var(--text-dark); text-align: center; }
     .placeholder { display: grid; place-items: center; height: 100vh; font-size: 18px; }
     
+    .password-modal .form-group {
+        width: 100%; max-width: 400px; text-align: left; margin-bottom: 16px;
+    }
+    .password-modal label {
+        display: block; font-weight: 500; margin-bottom: 6px; font-size: 14px;
+    }
+    .password-modal input {
+        width: 100%; padding: 12px; background: var(--bg-med); color: var(--text);
+        border: 1px solid var(--bg-light); border-radius: var(--radius-md); font-family: inherit;
+    }
+    .password-modal .error-msg {
+        color: var(--accent-red); min-height: 20px; margin-top: 10px; font-size: 14px;
+    }
+
     @media (max-width: 768px) {
         .app-view { padding: 10px; gap: 10px; }
         .main-content { grid-template-columns: 1fr; }
@@ -142,7 +155,10 @@
     <div id="appView" class="app-view hidden">
         <div class="header">
             <div id="studentName" style="font-size: 20px; font-weight: 600;"></div>
-            <button class="btn danger" id="btnLogout" style="width: auto; font-size: 14px;">Logout</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" id="btnChangePassword" style="width: auto; font-size: 14px;">Change Password</button>
+                <button class="btn danger" id="btnLogout" style="width: auto; font-size: 14px;">Logout</button>
+            </div>
         </div>
         <div class="main-content">
             <div class="sidebar">
@@ -202,7 +218,7 @@
             studentId = sessionStorage.getItem('studentId');
             if (!schoolId || !studentId) {
                 $('#loader').textContent = 'Access Denied. Redirecting...';
-                setTimeout(() => { window.location.href = './login.html'; }, 1500);
+                setTimeout(() => { window.location.href = './index.html'; }, 1500);
                 return;
             }
 
@@ -217,7 +233,7 @@
                 if (!studentData) {
                     alert('Your student profile was not found. Logging out.');
                     sessionStorage.clear();
-                    window.location.href = './login.html';
+                    window.location.href = './index.html';
                     return;
                 }
                 
@@ -380,7 +396,7 @@
                 Quiz Complete!
                 <span>+${reward}</span>
                 You answered ${quizState.score} of 10 questions correctly. Keep up the great work!
-                <button class="btn primary" data-action="close-quiz" style="margin-top: 30px; width: auto;">Awesome!</button>
+                <button class="btn primary" data-action="close-modal" style="margin-top: 30px; width: auto;">Awesome!</button>
             </div></div>`;
             $('#quizModalContainer').innerHTML = resultsHTML;
 
@@ -389,23 +405,80 @@
             updates[`/students/${studentId}/completedTasks/${quizState.taskId}`] = true;
             update(ref(db, `schools/${schoolId}`), updates);
         }
+        
+        // ✅ NEW: Function to show the password change modal
+        function showChangePasswordModal() {
+            const modalHTML = `<div class="password-modal">
+                <h2 style="font-weight: 600;">Change Your Password</h2>
+                <div class="form-group">
+                    <label for="currentPassword">Current Password</label>
+                    <input type="password" id="currentPassword">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword">
+                </div>
+                <div class="error-msg" id="passwordErrorMsg"></div>
+                <div style="display: flex; gap: 12px; margin-top: 20px; max-width: 400px; width: 100%;">
+                    <button class="btn" data-action="close-modal" style="width: 100%;">Cancel</button>
+                    <button class="btn primary" data-action="save-password" style="width: 100%;">Save Changes</button>
+                </div>
+            </div>`;
+            $('#quizModalContainer').innerHTML = modalHTML;
+        }
 
         // --- GLOBAL CLICK HANDLER ---
         document.addEventListener('click', async e => {
             const target = e.target;
             
-            if (target.id === 'btnLogout') { sessionStorage.clear(); window.location.href = './login.html'; return; }
+            if (target.id === 'btnLogout') { sessionStorage.clear(); window.location.href = './index.html'; return; }
+            if (target.id === 'btnChangePassword') { showChangePasswordModal(); return; }
             
-            const switchBtn = target.closest('[data-action="switch-shop"]');
-            if (switchBtn) {
-                activeShopTeacherId = switchBtn.dataset.teacherId;
-                renderShop();
+            const actionBtn = target.closest('[data-action]');
+            if (actionBtn) {
+                const action = actionBtn.dataset.action;
+                if (action === 'switch-shop') {
+                    activeShopTeacherId = actionBtn.dataset.teacherId;
+                    renderShop();
+                } else if (action === 'start-quiz') {
+                    startQuiz();
+                } else if (action === 'close-modal') {
+                    $('#quizModalContainer').innerHTML = '';
+                } else if (action === 'save-password') {
+                    const currentPass = $('#currentPassword').value;
+                    const newPass = $('#newPassword').value;
+                    const confirmPass = $('#confirmPassword').value;
+                    const errorMsg = $('#passwordErrorMsg');
+
+                    if (currentPass !== studentData.password) {
+                        errorMsg.textContent = 'Your current password is incorrect.';
+                        return;
+                    }
+                    if (!newPass || newPass.length < 4) {
+                        errorMsg.textContent = 'New password must be at least 4 characters long.';
+                        return;
+                    }
+                    if (newPass !== confirmPass) {
+                        errorMsg.textContent = 'New passwords do not match.';
+                        return;
+                    }
+
+                    actionBtn.disabled = true;
+                    actionBtn.textContent = 'Saving...';
+                    await update(ref(db, `schools/${schoolId}/students/${studentId}`), { password: newPass });
+                    $('#quizModalContainer').innerHTML = `<div class="quiz-modal"><div class="quiz-results">
+                        Password updated successfully!
+                        <button class="btn primary" data-action="close-modal" style="margin-top: 30px; width: auto;">OK</button>
+                    </div></div>`;
+                }
                 return;
             }
-            
-            if (target.closest('[data-action="start-quiz"]')) { startQuiz(); return; }
+
             if (target.closest('.quiz-answer')) { handleAnswer(target.closest('.quiz-answer')); return; }
-            if (target.closest('[data-action="close-quiz"]')) { $('#quizModalContainer').innerHTML = ''; return; }
 
             const buyBtn = target.closest('button[data-power-id]');
             if(buyBtn) {
