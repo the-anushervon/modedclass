@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Student Portal • Mod-ed-class</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { 
+        --bg-dark: #1a1b26; --bg-med: #24283b; --bg-light: #414868; 
+        --panel: #1f202e; --text: #c0caf5; --text-dark: #a9b1d6; 
+        --accent-primary: #bb9af7; --accent-secondary: #7aa2f7; 
+        --accent-green: #9ece6a; --accent-yellow: #e0af68; --accent-red: #f7768e; 
+        --shadow: 0 10px 30px rgba(0,0,0,.4); --radius-lg: 16px; 
+        --radius-md: 12px; --radius-sm: 8px; 
+        --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); 
+    }
+    body.light-theme {
+        --bg-dark: #f0f2f5; --bg-med: #ffffff; --bg-light: #e4e6eb;
+        --panel: #ffffff; --text: #050505; --text-dark: #65676b;
+        --accent-primary: #8a3ffc; --accent-secondary: #0f62fe;
+        --accent-green: #24a148; --accent-yellow: #ff832b; --accent-red: #da1e28;
+        --shadow: 0 4px 12px rgba(0,0,0,.1);
+    }
+    * { box-sizing: border-box; }
+    body { 
+        margin: 0; background: var(--bg-dark); color: var(--text); 
+        font-family: 'Poppins', sans-serif; -webkit-font-smoothing: antialiased; 
+        transition: background-color .3s, color .3s;
+    }
+    .hidden { display: none !important; }
+    .app-view { 
+        width: 100%; max-width: 1000px; margin: 0 auto;
+        display: flex; flex-direction: column; gap: 20px; padding: 20px; 
+        min-height: 100vh;
+    }
+    .header { 
+        display: flex; align-items: center; justify-content: space-between; 
+        padding: 16px 24px; background: var(--panel); 
+        border-radius: var(--radius-lg); box-shadow: var(--shadow); flex-shrink: 0; 
+        transition: var(--transition);
+    }
+    body.light-theme .header { border: 1px solid #e0e0e0; }
+    .main-content { 
+        display: grid; grid-template-columns: 280px 1fr; 
+        gap: 20px; flex: 1; min-height: 0; 
+    }
+    .sidebar { display: flex; flex-direction: column; gap: 20px; min-height: 0; }
+    .card { 
+        background: var(--panel); border: 1px solid rgba(187, 154, 247, .1); 
+        border-radius: var(--radius-lg); overflow: hidden; 
+        display: flex; flex-direction: column; transition: var(--transition);
+    }
+    body.light-theme .card { border-color: #e0e0e0; }
+    .card h3 { 
+        margin: 0; padding: 16px 20px; border-bottom: 1px solid var(--bg-light); 
+        font-size: 16px; flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+    }
+    .card .body { padding: 20px; flex: 1; overflow-y: auto; }
+    .edcoin-balance { font-size: 48px; font-weight: 700; color: var(--accent-yellow); text-align: center; }
+    .chip { 
+        display: inline-flex; gap: 8px; align-items: center; 
+        padding: 8px 14px; background: var(--bg-light); 
+        border-radius: var(--radius-md); font-size: 14px; font-weight: 500; 
+    }
+    .btn { 
+        border: none; background: var(--bg-light); color: var(--text); 
+        padding: 12px 18px; border-radius: var(--radius-md); cursor: pointer; 
+        transition: var(--transition); font-weight: 500; width: 100%; font-size: 16px;
+    }
+    .btn.small { padding: 6px 12px; font-size: 14px; width: auto; }
+    .btn:disabled { background: var(--bg-med); color: var(--text-dark); cursor: not-allowed; }
+    .btn.primary { background: var(--accent-primary); color: #f0f0f0; font-weight: 700; } body.light-theme .btn.primary { color: #fff; }
+    .btn.danger { background: var(--accent-red); color: #f0f0f0; } body.light-theme .btn.danger { color: #fff; }
+    .btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-2px); }
+    .shop-toggles { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .shop-selection { display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; height: 100%; text-align: center;}
+    .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+    .power-card { 
+        background: var(--bg-med); border: 1px solid var(--bg-light); 
+        border-radius: var(--radius-md); padding: 16px; 
+        display: flex; flex-direction: column; text-align: center;
+        transition: var(--transition);
+    }
+    .power-card:hover { transform: translateY(-4px); border-color: var(--accent-secondary); }
+    .power-card .power-emoji { font-size: 32px; margin-bottom: 12px; }
+    .power-card-name { font-weight: 600; flex-grow: 1; margin-bottom: 12px; }
+    .inventory-group { margin-bottom: 16px; }
+    .inventory-group:last-child { margin-bottom: 0; }
+    .inventory-group-title {
+        margin: 0 0 8px 0; font-size: 14px; font-weight: 600;
+        color: var(--text-dark); border-bottom: 1px solid var(--bg-med);
+        padding-bottom: 6px;
+    }
+    .inventory-group-items { display: flex; flex-wrap: wrap; gap: 8px; }
+    .bonus-task-card {
+        background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary));
+        color: #f0f0f0; border-radius: var(--radius-lg); padding: 24px;
+        text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 20px;
+    }
+    body.light-theme .bonus-task-card { color: #fff; }
+    .bonus-task-card.completed { background: var(--bg-med); color: var(--text-dark); }
+    .bonus-task-card h4 { margin: 0; font-size: 20px; }
+    .bonus-task-card p { margin: 0; opacity: .9; }
+    .quiz-modal {
+        position: fixed; inset: 0; background: var(--bg-dark); z-index: 100;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 20px; text-align: center;
+    }
+    .quiz-question { font-size: 24px; font-weight: 600; margin-bottom: 30px; }
+    .quiz-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; max-width: 600px; }
+    .quiz-answer {
+        background: var(--panel); border: 1px solid var(--bg-light); color: var(--text);
+        padding: 16px; border-radius: var(--radius-md); cursor: pointer; transition: var(--transition);
+    }
+    .quiz-answer:hover { border-color: var(--accent-primary); transform: translateY(-3px); }
+    /* ✅ FIX: Set explicit white color for selected answers for better contrast */
+    .quiz-answer.correct { background-color: color-mix(in srgb, var(--accent-green) 50%, transparent); color: #fff; border-color: var(--accent-green); font-weight: 600;}
+    .quiz-answer.wrong { background-color: color-mix(in srgb, var(--accent-red) 50%, transparent); color: #fff; border-color: var(--accent-red); }
+    body.light-theme .quiz-answer.correct { background-color: var(--accent-green); }
+    body.light-theme .quiz-answer.wrong { background-color: var(--accent-red); }
+
+    .quiz-progress { margin-top: 30px; font-size: 14px; color: var(--text-dark); }
+    .quiz-results { font-size: 24px; line-height: 1.5; }
+    .quiz-results span { color: var(--accent-yellow); font-size: 48px; font-weight: 700; display: block; margin: 10px 0; }
+    .muted { color: var(--text-dark); text-align: center; }
+    .placeholder { display: grid; place-items: center; height: 100vh; font-size: 18px; }
+    
+    @media (max-width: 768px) {
+        .app-view { padding: 10px; gap: 10px; }
+        .main-content { grid-template-columns: 1fr; }
+        .header { flex-direction: column; gap: 12px; text-align: center; }
+        .quiz-answers { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+    <button id="themeToggleBtn" class="btn" style="position: fixed; top: 10px; right: 10px; z-index: 100; width: auto; height: auto; padding: 8px;">🌙</button>
+    <div id="loader" class="placeholder">Verifying Access...</div>
+    <div id="appView" class="app-view hidden">
+        <div class="header">
+            <div id="studentName" style="font-size: 20px; font-weight: 600;"></div>
+            <button class="btn danger" id="btnLogout" style="width: auto; font-size: 14px;">Logout</button>
+        </div>
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="card">
+                    <h3>💰 My EDcoins</h3>
+                    <div class="body" style="display:grid; place-items:center;"><div id="edcoinBalance" class="edcoin-balance">0</div></div>
+                </div>
+                <div class="card" style="flex: 1;">
+                    <h3>🎒 Inventory</h3>
+                    <div class="body" id="inventoryBody"></div>
+                </div>
+            </div>
+            <div class="main-panel" style="display:flex; flex-direction:column; gap: 20px;">
+                <div class="card" style="flex: 1;">
+                    <h3 id="shopTitle">🛒 Shops</h3>
+                    <div class="body" id="shopBody"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="quizModalContainer"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getDatabase, ref, onValue, get, update } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
+
+        const $ = sel => document.querySelector(sel);
+        const firebaseConfig = { apiKey: "AIzaSyB5P-Ht1hi-KyvPKCbo9Ueu4d903hEOPOM", authDomain: "mod-ed-class.firebaseapp.com", databaseURL: "https://mod-ed-class-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "mod-ed-class", storageBucket: "mod-ed-class.appspot.com", messagingSenderId: "876182788592", appId: "1:876182788592:web:7b5cfe54b19aebe7486535" };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let schoolId, studentId, schoolData, studentData, studentTeachers = [];
+        let activeShopTeacherId = null;
+
+        // --- THEME TOGGLE ---
+        const themeToggleBtn = $('#themeToggleBtn');
+        const applyTheme = (theme) => {
+            if (theme === 'light') {
+                document.body.classList.add('light-theme');
+                themeToggleBtn.textContent = '☀️';
+            } else {
+                document.body.classList.remove('light-theme');
+                themeToggleBtn.textContent = '🌙';
+            }
+        };
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+        applyTheme(currentTheme);
+        themeToggleBtn.addEventListener('click', () => {
+            const newTheme = document.body.classList.contains('light-theme') ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+        });
+        // --- END THEME TOGGLE ---
+
+        async function initializeStudentPortal() {
+            schoolId = sessionStorage.getItem('schoolId');
+            studentId = sessionStorage.getItem('studentId');
+            if (!schoolId || !studentId) {
+                $('#loader').textContent = 'Access Denied. Redirecting...';
+                setTimeout(() => { window.location.href = './login.html'; }, 1500);
+                return;
+            }
+
+            onValue(ref(db, `schools/${schoolId}`), (snapshot) => {
+                if (!snapshot.exists()) {
+                    $('#loader').textContent = `Error: School data not found.`;
+                    return;
+                }
+                schoolData = snapshot.val();
+                studentData = schoolData.students?.[studentId];
+
+                if (!studentData) {
+                    alert('Your student profile was not found. Logging out.');
+                    sessionStorage.clear();
+                    window.location.href = './login.html';
+                    return;
+                }
+                
+                if ($('#appView').classList.contains('hidden')) {
+                    $('#loader').classList.add('hidden');
+                    $('#appView').classList.remove('hidden');
+                }
+                findStudentTeachers();
+                renderDashboard();
+            });
+        }
+        
+        function findStudentTeachers() {
+            if (!studentData.classId || !schoolData.teachers) { studentTeachers = []; return; }
+            studentTeachers = Object.entries(schoolData.teachers)
+                .filter(([_, teacher]) => teacher.role === 'teacher' && teacher.assignedClasses?.[studentData.classId])
+                .map(([id, teacher]) => ({ id, ...teacher }));
+        }
+
+        function renderDashboard() {
+            if (!studentData) return;
+            $('#studentName').textContent = `Welcome, ${studentData.name}!`;
+            $('#edcoinBalance').textContent = studentData.edcoins || 0;
+            renderInventory();
+            renderShop();
+        }
+
+        function renderInventory() {
+            const container = $('#inventoryBody');
+            const myPowers = studentData.powers || [];
+            if (myPowers.length === 0) { container.innerHTML = `<p class="muted" style="margin: auto;">You have no items yet.</p>`; return; }
+            const powersByTeacher = myPowers.reduce((acc, p) => {
+                (acc[p.teacherId] = acc[p.teacherId] || []).push(p);
+                return acc;
+            }, {});
+            container.innerHTML = Object.entries(powersByTeacher).map(([teacherId, items]) => {
+                const teacher = schoolData.teachers?.[teacherId];
+                const shopName = teacher ? (teacher.subject || teacher.name) : 'An old';
+                const powerChips = items.map(pInstance => {
+                    const powerInfo = teacher?.settings?.powers?.find(p => p.id === pInstance.powerId);
+                    return powerInfo ? `<div class="chip">${powerInfo.emoji || '✨'} ${powerInfo.name}</div>` : '';
+                }).join('');
+                return `<div class="inventory-group"><h4 class="inventory-group-title">From ${shopName}'s Shop</h4><div class="inventory-group-items">${powerChips}</div></div>`;
+            }).join('');
+        }
+
+        function renderShop() {
+            const titleContainer = $('#shopTitle');
+            const bodyContainer = $('#shopBody');
+            const teachersWithShops = studentTeachers.filter(t => t.settings?.powers?.length > 0);
+
+            if (teachersWithShops.length === 0) {
+                titleContainer.innerHTML = '🛒 Shops';
+                bodyContainer.innerHTML = `<div class="shop-selection"><p class="muted">No subject shops are available for your class right now.</p></div>`;
+                return;
+            }
+
+            if (!activeShopTeacherId || !teachersWithShops.some(t => t.id === activeShopTeacherId)) { activeShopTeacherId = teachersWithShops[0].id; }
+
+            const toggleButtons = teachersWithShops.map(t => `<button class="btn small ${t.id === activeShopTeacherId ? 'primary' : ''}" data-action="switch-shop" data-teacher-id="${t.id}">${t.subject || t.name}</button>`).join('');
+            titleContainer.innerHTML = `<div class="shop-toggles">${toggleButtons}</div>`;
+
+            const activeTeacher = teachersWithShops.find(t => t.id === activeShopTeacherId);
+            const powers = activeTeacher?.settings?.powers || [];
+            const studentCoins = studentData.edcoins || 0;
+            const myPowerIds = (studentData.powers || []).map(p => p.powerId);
+            
+            let bonusTaskHTML = '';
+            const taskData = schoolData.bonusTasks?.[studentData.classId];
+            if (taskData && taskData.teacherId === activeShopTeacherId) {
+                const isExpired = taskData.expiresAt && new Date(taskData.expiresAt) < new Date();
+                const isCompleted = studentData.completedTasks?.[taskData.taskId];
+
+                if (!isExpired) {
+                    if (isCompleted) {
+                        bonusTaskHTML = `<div class="bonus-task-card completed"><h4>✅ Bonus Task Completed!</h4><p>Great job finishing the task.</p></div>`;
+                    } else {
+                        bonusTaskHTML = `<div class="bonus-task-card">
+                            <h4>🎯 Bonus Task Available!</h4>
+                            <p>Complete a 10-question quiz to earn EDcoins!</p>
+                            <button class="btn" data-action="start-quiz" style="background: white; color: black; width: auto; font-weight: 700;">Start Task</button>
+                        </div>`;
+                    }
+                }
+            }
+
+            const gridContent = powers.map(p => {
+                const alreadyOwned = myPowerIds.includes(p.id);
+                const canAfford = studentCoins >= p.cost;
+                return `<div class="power-card">
+                    <div class="power-emoji">${p.emoji || '✨'}</div>
+                    <div class="power-card-name">${p.name}</div>
+                    <div class="chip" style="margin: 0 auto 12px;">${p.cost} EDcoins</div>
+                    <button class="btn primary" data-power-id="${p.id}" data-teacher-id="${activeTeacher.id}" ${alreadyOwned || !canAfford ? 'disabled' : ''}>${alreadyOwned ? 'Owned' : 'Buy'}</button>
+                    ${!alreadyOwned && !canAfford ? `<small class="muted" style="margin-top: 8px;">(Not enough EDcoins)</small>` : ''}
+                </div>`;
+            }).join('');
+            
+            bodyContainer.innerHTML = bonusTaskHTML + `<div class="shop-grid">${gridContent}</div>`;
+        }
+
+        // --- QUIZ LOGIC ---
+        let quizState = {};
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function startQuiz() {
+            const taskData = schoolData.bonusTasks?.[studentData.classId];
+            if (!taskData) return;
+            
+            const shuffledQuestions = shuffleArray([...taskData.questions]).slice(0, 10);
+            shuffledQuestions.forEach(q => q.answers = shuffleArray(q.answers));
+
+            quizState = {
+                questions: shuffledQuestions,
+                taskId: taskData.taskId,
+                currentIndex: 0,
+                score: 0,
+            };
+            renderQuizQuestion();
+        }
+
+        function renderQuizQuestion() {
+            if (quizState.currentIndex >= quizState.questions.length) {
+                finishQuiz();
+                return;
+            }
+            const q = quizState.questions[quizState.currentIndex];
+            const answerButtons = q.answers.map((ans, index) => 
+                `<button class="quiz-answer" data-correct="${ans.correct}" data-index="${index}">${ans.text}</button>`
+            ).join('');
+            
+            $('#quizModalContainer').innerHTML = `<div class="quiz-modal">
+                <div class="quiz-question">${q.question}</div>
+                <div class="quiz-answers">${answerButtons}</div>
+                <div class="quiz-progress">Question ${quizState.currentIndex + 1} of ${quizState.questions.length}</div>
+            </div>`;
+        }
+
+        function handleAnswer(target) {
+            if (target.dataset.answered) return;
+            const isCorrect = target.dataset.correct === 'true';
+            if (isCorrect) { quizState.score++; target.classList.add('correct'); } 
+            else { target.classList.add('wrong'); }
+            
+            document.querySelectorAll('.quiz-answer').forEach(btn => btn.dataset.answered = 'true');
+            
+            setTimeout(() => { quizState.currentIndex++; renderQuizQuestion(); }, 1200);
+        }
+
+        function finishQuiz() {
+            // ✅ FIX: Changed reward to 1 EDcoin per correct answer
+            const reward = quizState.score; 
+            const resultsHTML = `<div class="quiz-modal"><div class="quiz-results">
+                Quiz Complete!
+                <span>+${reward}</span>
+                You answered ${quizState.score} of 10 questions correctly. Keep up the great work!
+                <button class="btn primary" data-action="close-quiz" style="margin-top: 30px; width: auto;">Awesome!</button>
+            </div></div>`;
+            $('#quizModalContainer').innerHTML = resultsHTML;
+
+            const updates = {};
+            updates[`/students/${studentId}/edcoins`] = (studentData.edcoins || 0) + reward;
+            updates[`/students/${studentId}/completedTasks/${quizState.taskId}`] = true;
+            update(ref(db, `schools/${schoolId}`), updates);
+        }
+
+        // --- GLOBAL CLICK HANDLER ---
+        document.addEventListener('click', async e => {
+            const target = e.target;
+            
+            if (target.id === 'btnLogout') { sessionStorage.clear(); window.location.href = './login.html'; return; }
+            
+            const switchBtn = target.closest('[data-action="switch-shop"]');
+            if (switchBtn) {
+                activeShopTeacherId = switchBtn.dataset.teacherId;
+                renderShop();
+                return;
+            }
+            
+            if (target.closest('[data-action="start-quiz"]')) { startQuiz(); return; }
+            if (target.closest('.quiz-answer')) { handleAnswer(target.closest('.quiz-answer')); return; }
+            if (target.closest('[data-action="close-quiz"]')) { $('#quizModalContainer').innerHTML = ''; return; }
+
+            const buyBtn = target.closest('button[data-power-id]');
+            if(buyBtn) {
+                buyBtn.disabled = true; buyBtn.textContent = 'Purchasing...';
+                const { teacherId, powerId } = buyBtn.dataset;
+                const teacher = schoolData.teachers[teacherId];
+                const powerToBuy = teacher?.settings?.powers?.find(p => p.id === powerId);
+
+                if (powerToBuy && (studentData.edcoins || 0) >= powerToBuy.cost) {
+                    const newCoins = studentData.edcoins - powerToBuy.cost;
+                    const newPowers = [...(studentData.powers || []), { powerId: powerToBuy.id, teacherId, purchasedAt: new Date().toISOString() }];
+                    await update(ref(db, `schools/${schoolId}/students/${studentId}`), { edcoins: newCoins, powers: newPowers });
+                } else { alert("Purchase failed. Not enough EDcoins or item is unavailable."); }
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', initializeStudentPortal);
+    </script>
+</body>
+</html>
