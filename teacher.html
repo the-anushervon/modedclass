@@ -35,7 +35,11 @@
     body.light-theme .panel { border-color: #e0e0e0; }
     .sidebar { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
     .sidebar-section { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
-    .class-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px; }
+    .class-list { 
+        flex: 1; overflow-y: auto; 
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 10px; padding: 4px; 
+    }
     .class-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: var(--radius-md); background: var(--bg-med); border: 1px solid var(--bg-light); cursor: pointer; transition: var(--transition); flex-shrink: 0; }
     .class-item:hover { transform: translateY(-2px); border-color: var(--accent-secondary); }
     .class-item.active { border-color: var(--accent-primary); background: var(--bg-light); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 30%, transparent); }
@@ -87,7 +91,8 @@
         .app { grid-template-columns: 1fr; }
         .header { flex-direction: column; gap: 12px; padding-bottom: 0; }
         .sidebar { padding-top: 0; }
-        .sidebar-section { max-height: 25vh; }
+        .sidebar-section { max-height: none; }
+        .class-list { grid-template-columns: 1fr; }
         #bulkActionsPanel { flex-direction: column; align-items: stretch; }
         #bulkActionsPanel .form-group { width: 100%; }
         #bulkActionsPanel input { max-width: none; }
@@ -109,13 +114,14 @@
             <aside class="sidebar panel">
                 <div class="sidebar-section">
                     <h3 style="margin:0; padding-left: 4px;">Your Assigned Classes</h3>
+                    <input type="text" id="classFilterInput" placeholder="Filter classes..." style="margin-top: 8px;">
                     <div class="class-list" id="classList"></div>
                 </div>
                 <div style="margin-top:auto; display:flex; flex-direction:column; gap: 12px; border-top: 1px solid var(--bg-light); padding-top: 18px;">
                     <button class="btn" id="btnBonusTask">🎯 Bonus Task</button>
                     <button class="btn" id="btnTogglePowers">🔮 Manage My Shop</button>
                     <button class="btn" id="btnToggleActions">⚡️ Manage Quick Actions</button>
-                    <button class="btn" id="btnChangePassword">🔑 Change Password</button>
+                    <button class="btn" id="btnSettings">⚙️ Settings</button>
                 </div>
             </aside>
             <section class="content panel">
@@ -155,8 +161,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        // ✅ UPDATED: Added updatePassword for the new feature
-        import { getAuth, signOut, onAuthStateChanged, updatePassword } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+        import { getAuth, signOut, onAuthStateChanged, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
         import { getDatabase, ref, onValue, update, set, remove } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
 
         const $ = sel => document.querySelector(sel);
@@ -223,17 +228,23 @@
                 }
                 renderAll();
             });
-
-            // ✅ FIX: Periodically check for task expiry
-            setInterval(renderContentHeader, 30000); // Check every 30 seconds
+            
+            setInterval(renderContentHeader, 30000);
         }
         
         function renderAll() { renderClasses(); renderStudents(); renderBulkActionsPanel(); renderContentHeader(); }
 
         function renderClasses() {
             const assignedIds = Object.keys(teacherProfile.assignedClasses || {});
-            $('#classList').innerHTML = assignedIds.length === 0 ? `<p class="muted" style="padding: 1rem;">You have not been assigned any classes.</p>` :
-                assignedIds.map(id => `<div class="class-item ${id === activeClassId ? 'active' : ''}" data-id="${id}"><span>${schoolData.classes?.[id]?.name || 'Unknown Class'}</span></div>`).join('');
+            const filterText = $('#classFilterInput').value.toLowerCase().trim();
+
+            const filteredClassIds = assignedIds.filter(id => {
+                const className = schoolData.classes?.[id]?.name || '';
+                return className.toLowerCase().includes(filterText);
+            });
+
+            $('#classList').innerHTML = filteredClassIds.length === 0 ? `<p class="muted" style="padding: 1rem; grid-column: 1 / -1;">No matching classes found.</p>` :
+                filteredClassIds.map(id => `<div class="class-item ${id === activeClassId ? 'active' : ''}" data-id="${id}"><span>${schoolData.classes?.[id]?.name || 'Unknown Class'}</span></div>`).join('');
         }
         
         function renderContentHeader() {
@@ -247,7 +258,6 @@
             $('#btnBonusTask').disabled = false;
             
             const bonusTask = schoolData.bonusTasks?.[activeClassId];
-            // ✅ FIX: Check for task expiry in addition to ownership
             const isExpired = bonusTask && bonusTask.expiresAt && new Date(bonusTask.expiresAt) < new Date();
             const canStopTask = bonusTask && bonusTask.teacherId === teacherId && !isExpired;
             $('#btnStopBonusTask').classList.toggle('hidden', !canStopTask);
@@ -302,7 +312,7 @@
             const updates = {};
             studentIds.forEach(id => {
                 const currentCoins = schoolData.students[id]?.edcoins || 0;
-                updates[`/students/${id}/edcoins`] = currentCoins + amount;
+                updates[`/students/${id}/edcoins`] = Math.max(0, currentCoins + amount);
             });
             update(ref(db, `schools/${schoolId}`), updates).catch(err => showMessage(`Coin update failed: ${err.message}`, 'Error'));
         }
@@ -333,14 +343,49 @@
             modal.classList.add('show');
         };
 
+        const showGtTrainingModal = () => {
+            const modal = $('#manageModal'), title = $('#manageModalTitle'), body = $('#manageModalBody');
+            title.textContent = '✍️ GT Training Bank';
+            
+            const instructions = `<p class="muted" style="margin-top:0; text-align:left;">
+                Upload a bank of up to 100 questions for student practice. The subject will be based on your profile's subject setting.
+                <br>Each question must start with '?', and the first answer on the next line is the correct one.
+            </p>`;
+
+            const currentBank = schoolData.gtTraining?.[teacherId];
+            const existingQuestions = currentBank?.questions?.map(q => {
+                const answers = q.answers.map(a => a.text).join('\n');
+                return `? ${q.question}\n${answers}`;
+            }).join('\n\n') || '';
+
+            const content = `${instructions}
+                <textarea id="gtQuestionsImport" placeholder="Paste your questions here...">${existingQuestions}</textarea>
+                <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                    <button class="btn primary" id="btnSaveGtBank">Save Question Bank</button>
+                </div>`;
+            
+            body.innerHTML = content;
+            modal.classList.add('show');
+        };
+
         const showManageModal = (type) => {
             const modal = $('#manageModal'), title = $('#manageModalTitle'), body = $('#manageModalBody');
             let content = '';
             if (type === 'powers') {
                 title.textContent = '🔮 Manage My Shop';
                 const powers = teacherProfile.settings?.powers || [];
-                const powerRows = powers.map(p => `<div class="form-grid" data-item-type="powers" data-id="${p.id}"><input type="text" placeholder="🔮" value="${p.emoji || ''}" data-field="emoji" style="text-align:center; font-size: 18px;"><input type="text" placeholder="Power Name" value="${p.name || ''}" data-field="name"><input type="number" placeholder="Cost" value="${p.cost || 0}" data-field="cost"><button class="btn small danger" data-remove="item">✖</button></div>`).join('');
-                content = `<p class="muted" style="margin-top:0;">Add, edit, or remove items available for purchase with EDcoins.</p><div id="powersList" style="display:flex; flex-direction:column; gap:10px;">${powerRows}</div><div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;"><button class="btn" id="btnAddPower">Add Item</button><button class="btn primary" id="btnSaveChanges" data-type="powers">Save Changes</button></div>`;
+                const powerRows = powers.map(p => `
+                    <div class="power-item-editor">
+                        <div class="form-grid" data-item-type="powers" data-id="${p.id}" style="margin-bottom: 8px;">
+                            <input type="text" placeholder="🔮" value="${p.emoji || ''}" data-field="emoji" style="text-align:center; font-size: 18px;">
+                            <input type="text" placeholder="Power Name" value="${p.name || ''}" data-field="name">
+                            <input type="number" placeholder="Cost" value="${p.cost || 0}" data-field="cost">
+                            <button class="btn small danger" data-remove="item">✖</button>
+                        </div>
+                        <textarea placeholder="Item description..." data-field="description" style="min-height: 60px; font-size: 13px; resize: none;">${p.description || ''}</textarea>
+                    </div>
+                `).join('');
+                content = `<p class="muted" style="margin-top:0;">Add, edit, or remove items available for purchase with EDcoins.</p><div id="powersList" style="display:flex; flex-direction:column; gap:16px;">${powerRows}</div><div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;"><button class="btn" id="btnAddPower">Add Item</button><button class="btn primary" id="btnSaveChanges" data-type="powers">Save Changes</button></div>`;
             } else if (type === 'quickActions') {
                 title.textContent = '⚡️ Manage Quick Actions';
                 const actions = teacherProfile.settings?.quickActions || [];
@@ -361,12 +406,26 @@
             $('#manageModal').classList.add('show');
         };
         
-        // ✅ NEW: Function to show the change password modal
+        const showSettingsModal = () => {
+            const modal = $('#manageModal'), title = $('#manageModalTitle'), body = $('#manageModalBody');
+            title.textContent = '⚙️ Settings';
+            body.innerHTML = `<div style="display:flex; flex-direction:column; gap:16px; align-items: flex-start;">
+                    <p class="muted" style="margin-top:0; text-align: left; width: 100%;">Manage your account and question banks.</p>
+                    <button class="btn" data-action="show-change-password">🔑 Change Password</button>
+                    <button class="btn" data-action="show-gt-training">✍️ Manage GT Training Bank</button>
+                </div>`;
+            modal.classList.add('show');
+        };
+        
         const showChangePasswordModal = () => {
             const modal = $('#manageModal'), title = $('#manageModalTitle'), body = $('#manageModalBody');
             title.textContent = '🔑 Change Password';
             body.innerHTML = `
-                <div style="display:flex; flex-direction:column; gap:12px;">
+                <div style="display:flex; flex-direction:column; gap:16px;">
+                    <div>
+                        <label>Current Password</label>
+                        <input type="password" id="currentPasswordInput" required style="margin-top:4px;">
+                    </div>
                     <div>
                         <label>New Password</label>
                         <input type="password" id="newPasswordInput" style="margin-top:4px;">
@@ -386,6 +445,8 @@
         // --- Event Listeners ---
         $('#btnLogout').addEventListener('click', () => signOut(auth).then(() => { sessionStorage.clear(); window.location.href = './index.html'; }));
         
+        $('#classFilterInput').addEventListener('input', renderClasses);
+
         $('#classList').addEventListener('click', e => {
             const item = e.target.closest('.class-item');
             if (item && item.dataset.id !== activeClassId) { 
@@ -443,7 +504,7 @@
         $('#btnToggleActions').addEventListener('click', () => showManageModal('quickActions'));
         $('#btnOpenShop').addEventListener('click', () => showPurchaseModal());
         $('#btnBonusTask').addEventListener('click', () => showBonusTaskModal());
-        $('#btnChangePassword').addEventListener('click', showChangePasswordModal); // ✅ NEW listener
+        $('#btnSettings').addEventListener('click', showSettingsModal);
         $('#btnStopBonusTask').addEventListener('click', () => {
             if (confirm('Are you sure you want to stop the current bonus task for this class?')) {
                 remove(ref(db, `schools/${schoolId}/bonusTasks/${activeClassId}`));
@@ -452,7 +513,14 @@
 
         document.addEventListener('click', e => {
             const target = e.target;
-            if (target.closest('[data-action="close-modal"]')) { closeModal(); return; }
+            const actionTarget = target.closest('[data-action]');
+            if (actionTarget) {
+                const action = actionTarget.dataset.action;
+                if (action === 'close-modal') closeModal();
+                if (action === 'show-change-password') showChangePasswordModal();
+                if (action === 'show-gt-training') showGtTrainingModal();
+                return;
+            }
 
             if (target.id === 'btnStartTask') {
                 const text = $('#questionsImport').value.trim();
@@ -490,25 +558,97 @@
                 } else { showMessage('No valid questions found. Ensure questions start with "?".', 'Parsing Error'); }
             }
 
+            if (target.id === 'btnSaveGtBank') {
+                const text = $('#gtQuestionsImport').value.trim();
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                
+                if (lines.length === 0) {
+                    set(ref(db, `schools/${schoolId}/gtTraining/${teacherId}`), null)
+                        .then(() => { closeModal(); showMessage('Your question bank has been cleared.', 'Success'); })
+                        .catch(err => showMessage(`Error: ${err.message}`, 'Error'));
+                    return;
+                }
+
+                const questions = [];
+                let currentQuestion = null;
+
+                lines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine.startsWith('?')) {
+                        if (currentQuestion) questions.push(currentQuestion);
+                        currentQuestion = { question: trimmedLine.substring(1).trim(), answers: [] };
+                    } else if (currentQuestion) {
+                        const isCorrect = currentQuestion.answers.length === 0;
+                        currentQuestion.answers.push({ text: trimmedLine, correct: isCorrect });
+                    }
+                });
+                if (currentQuestion) questions.push(currentQuestion);
+
+                if (questions.length > 100) {
+                    return showMessage('You can upload a maximum of 100 questions.', 'Error');
+                }
+
+                if (questions.length > 0) {
+                    const gtData = {
+                        questions: questions,
+                        subject: teacherProfile.subject || 'General Knowledge',
+                        teacherId: teacherId,
+                        updatedAt: new Date().toISOString(),
+                    };
+                    set(ref(db, `schools/${schoolId}/gtTraining/${teacherId}`), gtData)
+                        .then(() => { closeModal(); showMessage('Question bank saved successfully!', 'Success'); })
+                        .catch(err => showMessage(`Error: ${err.message}`, 'Error'));
+                } else { showMessage('No valid questions found. Ensure questions start with "?".', 'Parsing Error'); }
+            }
+
             const manageModal = $('#manageModal');
             if (manageModal.classList.contains('show') && $('#manageModalBody').contains(target)) {
-                if (target.closest('[data-remove="item"]')) { target.closest('.form-grid').remove(); }
-                if (target.id === 'btnAddPower') { $('#powersList').insertAdjacentHTML('beforeend', `<div class="form-grid" data-item-type="powers"><input type="text" placeholder="🔮" data-field="emoji" style="text-align:center; font-size: 18px;"><input type="text" placeholder="Power Name" data-field="name"><input type="number" placeholder="Cost" value="100" data-field="cost"><button class="btn small danger" data-remove="item">✖</button></div>`); }
+                if (target.closest('[data-remove="item"]')) {
+                    const powerEditor = target.closest('.power-item-editor');
+                    if (powerEditor) {
+                        powerEditor.remove();
+                    } else {
+                        target.closest('.form-grid').remove();
+                    }
+                }
+                if (target.id === 'btnAddPower') { 
+                    $('#powersList').insertAdjacentHTML('beforeend', `
+                    <div class="power-item-editor">
+                        <div class="form-grid" data-item-type="powers" style="margin-bottom: 8px;">
+                            <input type="text" placeholder="🔮" data-field="emoji" style="text-align:center; font-size: 18px;">
+                            <input type="text" placeholder="Power Name" data-field="name">
+                            <input type="number" placeholder="Cost" value="100" data-field="cost">
+                            <button class="btn small danger" data-remove="item">✖</button>
+                        </div>
+                        <textarea placeholder="Item description..." data-field="description" style="min-height: 60px; font-size: 13px; resize: none;"></textarea>
+                    </div>`); 
+                }
                 if (target.id === 'btnQuickAction') { $('#actionsList').insertAdjacentHTML('beforeend', `<div class="form-grid" data-item-type="quickActions" style="grid-template-columns: 1fr 1fr 50px;"><input type="text" placeholder="Label" data-field="label"><input type="number" placeholder="Amount" data-field="delta"><button class="btn small danger" data-remove="item">✖</button></div>`); }
                 
                 if (target.id === 'btnSaveChanges') {
                     const type = target.dataset.type;
                     const data = [];
-                    document.querySelectorAll(`#manageModalBody [data-item-type="${type}"]`).forEach(row => {
-                        if (type === 'powers') {
+                    if (type === 'powers') {
+                        document.querySelectorAll(`#manageModalBody .power-item-editor`).forEach(editor => {
+                            const row = editor.querySelector('[data-item-type="powers"]');
                             const name = row.querySelector('[data-field="name"]').value.trim();
-                            if (name) data.push({ id: row.dataset.id || `power-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, emoji: row.querySelector('[data-field="emoji"]').value.trim(), name, cost: Number(row.querySelector('[data-field="cost"]').value) || 0 });
-                        } else if (type === 'quickActions') {
+                            if (name) {
+                                data.push({
+                                    id: row.dataset.id || `power-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                                    emoji: row.querySelector('[data-field="emoji"]').value.trim(),
+                                    name,
+                                    cost: Number(row.querySelector('[data-field="cost"]').value) || 0,
+                                    description: editor.querySelector('[data-field="description"]').value.trim()
+                                });
+                            }
+                        });
+                    } else if (type === 'quickActions') {
+                        document.querySelectorAll(`#manageModalBody [data-item-type="quickActions"]`).forEach(row => {
                             const label = row.querySelector('[data-field="label"]').value.trim();
                             if (label) data.push({ label, delta: Number(row.querySelector('[data-field="delta"]').value) || 0 });
-                        }
-                    });
-
+                        });
+                    }
+                    
                     target.disabled = true; target.textContent = 'Saving...';
                     const updates = {};
                     updates[`/teachers/${teacherId}/settings/${type}`] = data.length > 0 ? data : null;
@@ -522,30 +662,32 @@
                         });
                 }
                 
-                // ✅ NEW: Logic for saving the teacher's new password
                 if (target.id === 'btnSaveChangesPassword') {
+                    const currentPassword = $('#currentPasswordInput').value;
                     const newPassword = $('#newPasswordInput').value;
                     const confirmPassword = $('#confirmPasswordInput').value;
 
-                    if (!newPassword || newPassword.length < 6) {
-                        return showMessage("Password must be at least 6 characters long.", "Error");
-                    }
-                    if (newPassword !== confirmPassword) {
-                        return showMessage("Passwords do not match.", "Error");
-                    }
-
-                    target.disabled = true; target.textContent = "Saving...";
+                    if (!currentPassword) return showMessage("Please enter your current password.", "Error");
+                    if (!newPassword || newPassword.length < 6) return showMessage("New password must be at least 6 characters long.", "Error");
+                    if (newPassword !== confirmPassword) return showMessage("New passwords do not match.", "Error");
+                    
+                    target.disabled = true; target.textContent = "Verifying...";
                     const user = auth.currentUser;
-                    updatePassword(user, newPassword).then(() => {
+                    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+
+                    reauthenticateWithCredential(user, credential).then(() => {
+                        target.textContent = "Saving...";
+                        return updatePassword(user, newPassword);
+                    }).then(() => {
                         closeModal();
                         showMessage("Password updated successfully!", "Success");
                     }).catch((error) => {
                         console.error(error);
-                        let message = "An error occurred. ";
-                        if (error.code === 'auth/requires-recent-login') {
-                            message += 'Please log out and log back in to change your password.';
+                        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                            showMessage("The current password you entered is incorrect.", "Authentication Failed");
+                        } else {
+                            showMessage("An error occurred. If you recently changed your password, please log out and log back in before trying again.", "Error");
                         }
-                        showMessage(message, "Error");
                     }).finally(() => {
                         target.disabled = false; target.textContent = "Save New Password";
                     });
